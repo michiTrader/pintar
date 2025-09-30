@@ -1,6 +1,6 @@
 [project]
 name = "pintar"
-version = "0.1.0"
+version = "0.2.0"
 description = "librería Python para colorear texto de forma felxible en terminal con códigos ANSI"
 readme = "README.md"
 authors = [

@@ -2,7 +2,7 @@ import re
 
 class dye:
     """Dar color a una cadena de texto con códigos ANSI."""
-    def __init__(self, string, tex=None, bg=None, sty=None):
+    def _init_(self, string, tex=None, bg=None, sty=None):
         self.string = string.string_format if isinstance(string, dye) else str(string)
         self.final_string = None # Se asigna al final
 
@@ -27,12 +27,12 @@ class dye:
         # CREAR UN NUEVO SISTEMA CON CAPACIDAD DE DETECTAR SI ES rawin de fondo de texto o estilo y usar replace para cambiarlos con "[6m, [7m, [8m"
         # Código para resetear los estilos y colores
         # Usar códigos únicos como placeholders
-        raw_in_text  = f"{"\033[39m"}"  # Reset foreground color    | si falla: probar con 50m (que no hace nada)
-        raw_in_font  = f"{"\033[49m"}"  # Reset background (neutro) | si falla: probar con 51m (que no hace nada)
-        raw_in_style = f"{"\033[22m"}"  # Reset bold/dim (neutro)   | si falla: probar con 52m (que no hace nada)
-        raw_sequence = raw_in_text + raw_in_font + raw_in_style
+        raw_in_text     =  "\033[39m"  # Reset foreground color    | si falla: probar con 50m (que no hace nada)
+        raw_in_bg       =  "\033[49m"  # Reset background (neutro) | si falla: probar con 51m (que no hace nada)
+        raw_in_style    =  "\033[22m"  # Reset bold/dim (neutro)   | si falla: probar con 52m (que no hace nada)
+        raw_sequence  = raw_in_text + raw_in_bg + raw_in_style
 
-        all_out    = f"{"\033[0m"}"
+        all_out    = "\033[0m"
 
         # Agregar los delimitadores de 'raw_in' y 'all_out'
         string_format = raw_sequence + self.string + all_out
@@ -41,7 +41,7 @@ class dye:
         if ansi_text_format != "":
             string_format = string_format.replace(raw_in_text, ansi_text_format)
         if ansi_bg_format != "":
-            string_format = string_format.replace(raw_in_font, ansi_bg_format) 
+            string_format = string_format.replace(raw_in_bg, ansi_bg_format) 
         if format_in_style != "":
             string_format = string_format.replace(raw_in_style, format_in_style) 
         
@@ -158,6 +158,43 @@ class dye:
         # Si no es un tipo válido, lanzar una excepción
         raise ValueError(f"Formato de estilo no válido: '{style}'")
 
+    @classmethod
+    def start(cls, tex=None, bg=None, sty=None, return_repr=False):
+        # Configurar a formatos validos
+        font_ansi = cls._convert_color_to_ansi(tex)
+        bg_ansi = cls._convert_color_to_ansi(bg)
+        style_ansi = cls._conver_style_to_ansi(sty)
+
+        # Preparar la seuencia ANSI par cada formato de estilo 
+        ansi_text_format = "\033[39m"
+        ansi_bg_format = "\033[49m"
+        format_in_style = "\033[22m"
+
+        # Construir la secuencia de escape ANSI
+        if font_ansi is not None:
+            ansi_text_format = f"\033[38;{"5" if font_ansi.isalnum() else "2"};{font_ansi}m" 
+        if bg_ansi is not None:
+            ansi_bg_format = f"\033[48;{"5" if bg_ansi.isalnum() else "2"};{bg_ansi}m"
+        if style_ansi is not None:
+            format_in_style = f"\033[{style_ansi}m"
+
+        ansi = ""
+
+        ansi += ansi_text_format
+        ansi += ansi_bg_format
+        ansi += format_in_style 
+
+        if return_repr: return ansi
+        else: print(ansi, end="")
+
+    @classmethod
+    def end(cls, return_repr=False):
+        ansi = "\033[0m"
+        if return_repr: 
+            return ansi
+        else: 
+            print(ansi, end="") #  = "\033[39m" "\033[49m" "\033[22m"
+
     @property
     def clean(self):
         """Devuelve la cadena de texto sin códigos de formato ANSI"""
@@ -168,19 +205,19 @@ class dye:
         # Reconstruir el texto limpio usando los índices de self.clean_indexes
         return ''.join([self.string_format[i] for i in self.clean_indexes])
                
-    def __format__(self, format_spec):
+    def _format_(self, format_spec):
         return format(self.string_format, format_spec)
 
-    def __repr__(self):
+    def _repr_(self):
         return f"{self.string_format!r}"
 
-    def __str__(self):
+    def _str_(self):
         return self.string_format
 
-    def __len__(self):
+    def _len_(self):
         return len(self.clean)
 
-    def __getitem__(self, index):
+    def _getitem_(self, index):
         # Asegurarse de que el texto formateado esté preprocesado
         if not hasattr(self, 'clean_indexes'):
             self._preprocessing_text()
@@ -209,9 +246,8 @@ class dye:
         final_result = ''.join(result)
         return dye(final_result, self.font_ansi, self.bg_ansi, self.style_ansi)
 
-    def __iter__(self):
+    def _iter_(self):
         return iter(self.clean)
-
 
     @classmethod
     def palette(cls):
@@ -225,5 +261,4 @@ class dye:
                 print(f"{l[i]:>3}-\033[48;5;{l[i]}m Font \033[0m \033[38;5;{l[i]}mText\033[0m    ", end="")
             print()
         return ""
-
 
