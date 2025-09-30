@@ -2,7 +2,7 @@ import re
 
 class dye:
     """Dar color a una cadena de texto con códigos ANSI."""
-    def _init_(self, string, tex=None, bg=None, sty=None):
+    def __init__(self, string, tex=None, bg=None, sty=None):
         self.string = string.string_format if isinstance(string, dye) else str(string)
         self.final_string = None # Se asigna al final
 
@@ -195,6 +195,19 @@ class dye:
         else: 
             print(ansi, end="") #  = "\033[39m" "\033[49m" "\033[22m"
 
+    @classmethod
+    def palette(cls):
+        """Muestra los colores basicos de la paleta de 256 colores"""
+        columns = 10
+        rows = int(256/columns)
+        # Crear la matriz y secuencias
+        matriz = [[row + col * rows + 1 for col in range(columns)] for row in range(rows)]
+        for l in matriz:
+            for i in range(columns):
+                print(f"{l[i]:>3}-\033[48;5;{l[i]}m Font \033[0m \033[38;5;{l[i]}mText\033[0m    ", end="")
+            print()
+        return ""
+
     @property
     def clean(self):
         """Devuelve la cadena de texto sin códigos de formato ANSI"""
@@ -205,19 +218,19 @@ class dye:
         # Reconstruir el texto limpio usando los índices de self.clean_indexes
         return ''.join([self.string_format[i] for i in self.clean_indexes])
                
-    def _format_(self, format_spec):
+    def __format__(self, format_spec):
         return format(self.string_format, format_spec)
 
-    def _repr_(self):
+    def __repr__(self):
         return f"{self.string_format!r}"
 
-    def _str_(self):
+    def __str__(self):
         return self.string_format
 
-    def _len_(self):
+    def __len__(self):
         return len(self.clean)
 
-    def _getitem_(self, index):
+    def __getitem__(self, index):
         # Asegurarse de que el texto formateado esté preprocesado
         if not hasattr(self, 'clean_indexes'):
             self._preprocessing_text()
@@ -246,19 +259,7 @@ class dye:
         final_result = ''.join(result)
         return dye(final_result, self.font_ansi, self.bg_ansi, self.style_ansi)
 
-    def _iter_(self):
+    def __iter__(self):
         return iter(self.clean)
 
-    @classmethod
-    def palette(cls):
-        """Muestra los colores basicos de la paleta de 256 colores"""
-        columns = 10
-        rows = int(256/columns)
-        # Crear la matriz y secuencias
-        matriz = [[row + col * rows + 1 for col in range(columns)] for row in range(rows)]
-        for l in matriz:
-            for i in range(columns):
-                print(f"{l[i]:>3}-\033[48;5;{l[i]}m Font \033[0m \033[38;5;{l[i]}mText\033[0m    ", end="")
-            print()
-        return ""
 
