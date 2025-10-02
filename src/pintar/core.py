@@ -1,15 +1,19 @@
 import re
+# TODO: cambiar 'return_repr' por 'repr' en dye.start
+# TODO: que el operador suma '+' funcione para poder concatenarse con otro str o otro dye
+# TODO: cambiar 'tex' por 'txt' 
+# TODO: que en vez de string acepte cualquier parametro que se pueda cambiar a str como un entero
 
 class dye:
     """Dar color a una cadena de texto con códigos ANSI."""
-    def __init__(self, string, tex=None, bg=None, sty=None):
+    def __init__(self, string, text_color=None, bg_color=None, style=None):
         self.string = string.string_format if isinstance(string, dye) else str(string)
         self.final_string = None # Se asigna al final
 
         # Configurar a formatos validos
-        self.font_ansi = self._convert_color_to_ansi(tex)
-        self.bg_ansi = self._convert_color_to_ansi(bg)
-        self.style_ansi = self._conver_style_to_ansi(sty)
+        self.font_ansi = self._convert_color_to_ansi(text_color)
+        self.bg_ansi = self._convert_color_to_ansi(bg_color)
+        self.style_ansi = self._conver_style_to_ansi(style)
 
         # Preparar la seuencia ANSI par cada formato de estilo 
         ansi_text_format = ""
@@ -261,5 +265,22 @@ class dye:
 
     def __iter__(self):
         return iter(self.clean)
+
+
+class Brush:
+    @classmethod
+    def load(cls, text_color=None, bg_color=None, style=None):
+        ansi_color: str = dye.start(text_color, bg_color, style, return_repr=True)
+        ansi_end: str = dye.end(return_repr=True)
+        return lambda string: ansi_color + string + ansi_end
+
+
+class Stencil:
+    def __init__(self, string) -> None:
+        self.string = string
+
+    def spray(self, tex_color=None, bg_color=None, style=None):
+        return dye(self.string, tex_color, bg_color, style)
+
 
 
