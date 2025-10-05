@@ -1,7 +1,7 @@
 # TODO: que el operador suma '+' funcione para poder concatenarse con otro str o otro dye
 # TODO: que en vez de string acepte cualquier parametro que se pueda cambiar a str como un entero
 
-from .colors import RGB, Color
+from .colors import RGB, Color, HEX, HSL
 from typing import Tuple, List, Any, Union
 
 class dye:
@@ -12,8 +12,8 @@ class dye:
             self.string = string.string_format
 
         self.string = str(string)
-        self.fore = self._process_color_parameter(fore)
-        self.bg = self._process_color_parameter(bg)
+        self.fore = self._process_color_parameter(fore) # -> RGB 
+        self.bg = self._process_color_parameter(bg) # -> RGB 
         self.style = style 
 
         self.string_format = self.get_string_format()
@@ -147,12 +147,12 @@ class dye:
         return ';'.join( map(str, styles_ansi_indexes)) 
 
 
-    def update_colors(self, fore=None, bg=None, style=None):
-        self.fore = self._process_color_parameter(fore) or self.fore
-        self.bg = self._process_color_parameter(bg) or self.bg
-        self.style = self._process_color_parameter(style) or self.style
+    # def update_colors(self, fore=None, bg=None, style=None):
+        # self.fore = self._process_color_parameter(fore) or self.fore
+        # self.bg = self._process_color_parameter(bg) or self.bg
+        # self.style = self._process_color_parameter(style) or self.style
 
-        self.string_format = self.get_string_format()
+        # self.string_format = self.get_string_format()
 
     def get_string_format(self):
         
@@ -227,6 +227,10 @@ class dye:
     def _process_color_parameter(self, color: Any) -> Color:
         if isinstance(color, RGB):
             return color
+        if isinstance(color, HEX):
+            return color.to_rgb()
+        if isinstance(color, HSL):
+            return color.to_rgb()
         if isinstance(color, tuple):
             return RGB(color)
         if isinstance(color, str):
@@ -234,7 +238,6 @@ class dye:
                 return RGB.from_hex_string(color)
         if isinstance(color, int):
             return RGB.from_ansi_index(color) 
-
 
     @property
     def clean(self):

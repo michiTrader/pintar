@@ -87,6 +87,52 @@ class Color(metaclass=ABCMeta):
         hsl.s = self.clamp(hsl.s - amount, 1)
         return self.from_hsl(hsl)
 
+    def tint(self, amount: float) -> 'Color':
+        """
+        Mezcla el color con BLANCO (hace el color más claro).
+        
+        Args:
+            amount: Cantidad de blanco a mezclar (0.0 a 1.0)
+                   0.0 = color original
+                   1.0 = blanco puro
+        
+        Ejemplo:
+            rojo = RGB(255, 0, 0)
+            rosa = rojo.tint(0.5)  # Mezcla 50% blanco
+        """
+        rgb = self.to_rgb()
+        amount = self.clamp(amount, 1.0)
+        
+        # Interpolar hacia blanco (255, 255, 255)
+        r = round(rgb.r + (255 - rgb.r) * amount)
+        g = round(rgb.g + (255 - rgb.g) * amount)
+        b = round(rgb.b + (255 - rgb.b) * amount)
+        
+        return self.from_rgb(RGB(r, g, b, rgb.a))
+
+    def shade(self, amount: float) -> 'Color':
+        """
+        Mezcla el color con NEGRO (hace el color más oscuro).
+        
+        Args:
+            amount: Cantidad de negro a mezclar (0.0 a 1.0)
+                   0.0 = color original
+                   1.0 = negro puro
+        
+        Ejemplo:
+            rojo = RGB(255, 0, 0)
+            rojo_oscuro = rojo.shade(0.5)  # Mezcla 50% negro
+        """
+        rgb = self.to_rgb()
+        amount = self.clamp(amount, 1.0)
+        
+        # Interpolar hacia negro (0, 0, 0)
+        r = round(rgb.r * (1 - amount))
+        g = round(rgb.g * (1 - amount))
+        b = round(rgb.b * (1 - amount))
+        
+        return self.from_rgb(RGB(r, g, b, rgb.a))
+
 class RGB(Color):
     """Representa un color en formato RGB (0-255) + alpha opcional."""
 
@@ -251,10 +297,12 @@ class HSL(Color):
     """Representa un color en formato HSL (Hue, Saturation, Lightness)."""
 
     def __init__(self, h: float, s: float, l: float, a: float = 1.0) -> None:
-        self.h = h
-        self.s = s
-        self.l = l
-        self.a = a
+        # Normalizar el hue al rango 0-360
+        self.h = h % 360
+        # Clamp saturation y lightness al rango 0-1
+        self.s = max(0.0, min(1.0, s))
+        self.l = max(0.0, min(1.0, l))
+        self.a = max(0.0, min(1.0, a))
 
     def copy(self) -> 'HSL':
         return HSL(self.h, self.s, self.l, self.a)
@@ -278,6 +326,12 @@ class HSL(Color):
         r, g, b = colorsys.hls_to_rgb(self.h / 360, self.l, self.s)
         return RGB(round(r * 255), round(g * 255), round(b * 255), self.a)
 
+    def to_hex(self):
+        return self.to_rgb().to_hex()
+
+    def to_ansi_index(self):
+        return self.to_rgb().to_ansi_index()
+
     def lighten(self, amount: float) -> 'HSL':
         hsl = self.copy()
         hsl.l = self.clamp(hsl.l + amount, 1)
@@ -293,4 +347,201 @@ class HSL(Color):
 
     def desaturate(self, amount: float) -> 'HSL':
         return self.saturate(-amount)
+
+class HEX(Color):
+    """Representa un color en formato hexadecimal (#RRGGBB o #RRGGBBAA)."""
+
+    def __init__(self, value: str) -> None:
+        """
+        Inicializa un color HEX desde una cadena.
+        
+        Args:
+            value: String hexadecimal (#RGB, #RRGGBB, #RGBA, #RRGGBBAA)
+        
+        Ejemplos:
+            HEX('#F00')        -> Rojo corto
+            HEX('#FF0000')     -> Rojo largo
+            HEX('#FF0000FF')   -> Rojo con alpha
+            HEX('#F00F')       -> Rojo corto con alpha
+        """
+        if not isinstance(value, str):
+            raise TypeError("El valor debe ser una cadena de texto")
+        
+        if not value.startswith('#'):
+            raise ValueError("El color hexadecimal debe comenzar con '#'")
+        
+        # Validar y normalizar el formato
+        hex_part = value[1:]  # Remover el '#'
+        
+        if not match(r'^[\da-fA-F]+$', hex_part):
+            raise ValueError(f"'{value}' contiene caracteres no hexadecimales")
+        
+        length = len(hex_part)
+        if length not in [3, 4, 6, 8]:
+            raise ValueError(f"'{value}' no tiene una longitud válida (debe ser 3, 4, 6 u 8 caracteres)")
+        
+        self._value = value.upper()
+        self._parse_value()
+
+    def _parse_value(self) -> None:
+        """Parsea el valor hexadecimal y extrae los componentes RGB(A)."""
+        hex_part = self._value[1:]
+        length = len(hex_part)
+        
+        if length == 3:  # #RGB
+            self._r = int(hex_part[0] * 2, 16)
+            self._g = int(hex_part[1] * 2, 16)
+            self._b = int(hex_part[2] * 2, 16)
+            self._a = 1.0
+        elif length == 4:  # #RGBA
+            self._r = int(hex_part[0] * 2, 16)
+            self._g = int(hex_part[1] * 2, 16)
+            self._b = int(hex_part[2] * 2, 16)
+            self._a = int(hex_part[3] * 2, 16) / 255.0
+        elif length == 6:  # #RRGGBB
+            self._r = int(hex_part[0:2], 16)
+            self._g = int(hex_part[2:4], 16)
+            self._b = int(hex_part[4:6], 16)
+            self._a = 1.0
+        else:  # length == 8: #RRGGBBAA
+            self._r = int(hex_part[0:2], 16)
+            self._g = int(hex_part[2:4], 16)
+            self._b = int(hex_part[4:6], 16)
+            self._a = int(hex_part[6:8], 16) / 255.0
+
+    # ==============================
+    # Propiedades para acceder a componentes
+    # ==============================
+
+    @property
+    def r(self) -> int:
+        """Componente rojo (0-255)."""
+        return self._r
+
+    @property
+    def g(self) -> int:
+        """Componente verde (0-255)."""
+        return self._g
+
+    @property
+    def b(self) -> int:
+        """Componente azul (0-255)."""
+        return self._b
+
+    @property
+    def a(self) -> float:
+        """Componente alpha (0.0-1.0)."""
+        return self._a
+
+    @property
+    def value(self) -> str:
+        """Devuelve el valor hexadecimal normalizado."""
+        return self._value
+
+    # ==============================
+    # Creación de instancias
+    # ==============================
+
+    def copy(self) -> 'HEX':
+        """Devuelve una copia del color."""
+        return HEX(self._value)
+
+    @classmethod
+    def from_hsl(cls, value: HSL) -> 'HEX':
+        """Crea un HEX desde un valor HSL."""
+        rgb = value.to_rgb()
+        return cls.from_rgb(rgb)
+
+    @classmethod
+    def from_rgb(cls, value: RGB) -> 'HEX':
+        """Crea un HEX desde un valor RGB."""
+        if value.a < 1.0:
+            hex_str = f"#{value.r:02X}{value.g:02X}{value.b:02X}{int(round(value.a * 255)):02X}"
+        else:
+            hex_str = f"#{value.r:02X}{value.g:02X}{value.b:02X}"
+        return cls(hex_str)
+
+    @classmethod
+    def from_tuple(cls, value: tuple) -> 'HEX':
+        """Crea un HEX desde una tupla (r, g, b) o (r, g, b, a)."""
+        rgb = RGB.from_tuple(value)
+        return cls.from_rgb(rgb)
+
+    # ==============================
+    # Conversión
+    # ==============================
+
+    def to_css(self) -> str:
+        """Devuelve una representación CSS del color."""
+        return self._value.lower()
+
+    def to_hex(self) -> str:
+        """Devuelve el valor hexadecimal."""
+        return self._value
+
+    def to_hsl(self) -> HSL:
+        """Convierte el color actual a formato HSL."""
+        return self.to_rgb().to_hsl()
+
+    def to_rgb(self) -> RGB:
+        """Convierte el color actual a formato RGB."""
+        return RGB(self._r, self._g, self._b, self._a)
+
+    def to_ansi_index(self) -> int:
+        """Convierte el color actual al índice ANSI más cercano (0-255)."""
+        return self.to_rgb().to_ansi_index()
+
+    # ==============================
+    # Métodos de formato
+    # ==============================
+
+    def to_short_hex(self) -> str:
+        """
+        Convierte a formato corto (#RGB) si es posible.
+        Retorna el formato largo si no se puede acortar.
+        """
+        if self._a < 1.0:
+            # Con alpha
+            alpha_hex = int(round(self._a * 255))
+            if (self._r % 17 == 0 and self._g % 17 == 0 and 
+                self._b % 17 == 0 and alpha_hex % 17 == 0):
+                r = hex(self._r // 17)[2:]
+                g = hex(self._g // 17)[2:]
+                b = hex(self._b // 17)[2:]
+                a = hex(alpha_hex // 17)[2:]
+                return f"#{r}{g}{b}{a}".upper()
+        else:
+            # Sin alpha
+            if self._r % 17 == 0 and self._g % 17 == 0 and self._b % 17 == 0:
+                r = hex(self._r // 17)[2:]
+                g = hex(self._g // 17)[2:]
+                b = hex(self._b // 17)[2:]
+                return f"#{r}{g}{b}".upper()
+        
+        return self._value
+
+    def to_long_hex(self) -> str:
+        """Convierte siempre a formato largo (#RRGGBB o #RRGGBBAA)."""
+        if self._a < 1.0:
+            return f"#{self._r:02X}{self._g:02X}{self._b:02X}{int(round(self._a * 255)):02X}"
+        return f"#{self._r:02X}{self._g:02X}{self._b:02X}"
+
+    # ==============================
+    # Operadores de comparación
+    # ==============================
+
+    def __eq__(self, other) -> bool:
+        """Compara dos colores HEX."""
+        if not isinstance(other, HEX):
+            return False
+        return (self._r == other._r and self._g == other._g and 
+                self._b == other._b and abs(self._a - other._a) < 0.001)
+
+    def __hash__(self) -> int:
+        """Permite usar HEX como clave de diccionario."""
+        return hash((self._r, self._g, self._b, round(self._a, 3)))
+
+    def __str__(self) -> str:
+        """Representación en string."""
+        return self._value.lower()
 
