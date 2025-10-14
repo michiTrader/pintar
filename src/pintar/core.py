@@ -1,5 +1,5 @@
-# TODO: que el operador suma '+' funcione para poder concatenarse con otro str o otro dye
-# TODO: que en vez de string acepte cualquier parametro que se pueda cambiar a str como un entero
+# TODO: Que el operador suma '+' funcione para poder concatenarse con otro str o otro dye
+# TODO: Que en vez de string acepte cualquier parametro que se pueda cambiar a str como un entero
 
 from .colors import RGB, Color, HEX, HSL
 from typing import Tuple, List, Any, Union
@@ -171,7 +171,7 @@ class dye:
         if self.bg_ansi_sec is not None:
             ansi_bg_format += f"\033[48;{"5" if self.bg_ansi_sec.isalnum() else "2"};{self.bg_ansi_sec}m"
         if self.style_ansi_sec is not None:
-            ansi_style_format += f"\033[{self.style_ansi_sec}m"
+            ansi_style_format += f"\033[{self.style_ansi_sec}m" 
 
         # CREAR UN NUEVO SISTEMA CON CAPACIDAD DE DETECTAR SI ES rawin de fondo de texto o estilo y usar replace para cambiarlos con "[6m, [7m, [8m"
         # Código para resetear los estilos y colores
@@ -257,9 +257,22 @@ class Brush:
         return lambda string: ansi_color + string + ansi_end
 
 class Stencil:
-    def __init__(self, string) -> None:
+    def __init__(self, string, start=None, end=None) -> None:
         self.string = string
+        self.start = start 
+        self.end = end
 
     def spray(self, fore=None, bg=None, style=None):
-        return dye(self.string, fore, bg, style)
+        zone = self.string[self.start:self.end]
+
+        self.dyed_zone = dye(zone, fore, bg, style)
+
+        # Si no hay zona a pintar retornar el string ingresado
+        if zone == '':
+            return self.string
+
+        start_str = self.string[:self.start] if self.start else ''
+        end_str = self.string[self.end:] if self.end else ''
+
+        return f'{start_str}{self.dyed_zone}{end_str}'
 
