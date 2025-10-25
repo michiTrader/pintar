@@ -1,7 +1,7 @@
 from .core import dye, Brush, Stencil
 from .colors import RGB, HSL, HEX
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 __author__ = "michiTrader"
 __description__ = "librería Python para colorear texto en terminal con códigos ANSI"
 

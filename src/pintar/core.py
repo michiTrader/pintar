@@ -252,6 +252,9 @@ class dye:
 class Brush:
     @classmethod
     def load(cls, fore=None, bg=None, style=None):
+        fore = RGB.from_hex_string(fore) if fore else None
+        bg = RGB.from_hex_string(bg) if bg else None
+
         ansi_color: str = dye.start(fore, bg, style, repr=True)
         ansi_end: str = dye.end(repr=True)
         return lambda string: ansi_color + string + ansi_end
