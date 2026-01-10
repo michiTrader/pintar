@@ -545,3 +545,5 @@ class HEX(Color):
         """Representación en string."""
         return self._value.lower()
 
+
+

@@ -1,8 +1,11 @@
 # TODO: Que el operador suma '+' funcione para poder concatenarse con otro str o otro dye
 # TODO: Que en vez de string acepte cualquier parametro que se pueda cambiar a str como un entero
 
-from .colors import RGB, Color, HEX, HSL
+import re
+import sys
+from colors import RGB, Color, HEX, HSL
 from typing import Tuple, List, Any, Union
+from ansi import FORE, BACK, STYLE
 
 class dye:
     """Dar color a una cadena de texto con códigos ANSI."""
@@ -62,8 +65,16 @@ class dye:
     def __iter__(self):
         return iter(self.clean)
 
+    def __add__(self, other):
+        return dye(self.string_format + str(other.string_format), self.fore, self.bg, self.style)
+
     @classmethod
-    def start(cls, fore=None, bg=None, style=None, repr=False):
+    def start(cls, fore=None, bg=None, style=None, ret=False):
+
+        # Procesar parametros
+        fore = cls._process_color_parameter(fore)
+        bg = cls._process_color_parameter(bg)
+        
         # Configurar a formatos validos
         font_ansi = cls._color_to_ansi_rgb_seccion(fore)
         bg_ansi = cls._color_to_ansi_rgb_seccion(bg)
@@ -88,8 +99,10 @@ class dye:
         ansi += ansi_bg_format
         ansi += format_in_style 
 
-        if repr: return ansi
-        else: print(ansi, end="")
+        if ret: 
+            return ansi
+        else: 
+            print(ansi, end="")
 
     @classmethod
     def end(cls, repr=False):
@@ -224,7 +237,7 @@ class dye:
                 self.clean_indexes.append(i)
                 i += 1
 
-    def _process_color_parameter(self, color: Any) -> Color:
+    def _process_color_parameter(color: Any) -> Color:
         if isinstance(color, RGB):
             return color
         if isinstance(color, HEX):
@@ -238,6 +251,8 @@ class dye:
                 return RGB.from_hex_string(color)
         if isinstance(color, int):
             return RGB.from_ansi_index(color) 
+        if color is None:
+            return None
 
     @property
     def clean(self):
@@ -255,7 +270,7 @@ class Brush:
         fore = RGB.from_hex_string(fore) if fore else None
         bg = RGB.from_hex_string(bg) if bg else None
 
-        ansi_color: str = dye.start(fore, bg, style, repr=True)
+        ansi_color: str = dye.start(fore, bg, style, ret=True)
         ansi_end: str = dye.end(repr=True)
         return lambda string: ansi_color + string + ansi_end
 
@@ -278,4 +293,130 @@ class Stencil:
         end_str = self.string[self.end:] if self.end else ''
 
         return f'{start_str}{self.dyed_zone}{end_str}'
+
+class pstr:
+    def __init__(self, string: str = '') -> None:
+        self.string = string
+        self.string_format = self.get_string_format()
+
+    def __repr__(self):
+        return f"{self.string_format!r}"
+
+    def __str__(self):
+        return self.string_format
+
+    def __add__(self, other):
+        return pstr(self.string_format + other)
+
+    def get_truecolor_sequence(self, color_obj, is_bg=False):
+        """Genera la secuencia ANSI TrueColor (24-bit) manual."""
+        rgb = color_obj.to_rgb()
+        code_type = '48' if is_bg else '38'
+        return f"\033[{code_type};2;{rgb.r};{rgb.g};{rgb.b}m"
+
+    def parse_params(self, params_str):
+        """Convierte '120, 100%, 50%' en [120.0, 1.0, 0.5]"""
+        clean_params = []
+        for p in params_str.split(','):
+            p = p.strip()
+            if p.endswith('%'):
+                val = float(p.rstrip('%')) / 100.0
+            else:
+                val = float(p)
+            clean_params.append(val)
+        return clean_params
+
+    def replace_callback(self, match):
+        # Manejo de escapes \[ o \]
+        if match.group(1): 
+            return match.group(1)[1]
+            
+        content = match.group(2)
+        if not content: return ""
+        
+        content = content.strip()
+        if content == '/': return STYLE.RESET_ALL
+
+        ansi_sequence = ""
+        is_background = False
+        # Tokenizador inteligente
+        tokens = re.findall(r'(rgb\([^)]+\)|hsl\([^)]+\)|#[a-fA-F0-9]+|[a-zA-Z0-9/_]+)', content)
+
+        for token in tokens:
+            token_upper = token.upper()
+
+            if token_upper == 'ON':
+                is_background = True
+                continue
+
+            # --- LÓGICA DE CIERRE ---
+            if token.startswith('/'):
+                tag = token_upper[1:] # Ej: BOLD
+                
+                # 1. Intentar buscar NOT_TAG en STYLE (NOT_BOLD, NOT_ITALIC...)
+                not_tag = f"NOT_{tag}"
+                if hasattr(STYLE, not_tag):
+                    ansi_sequence += getattr(STYLE, not_tag)
+                # 2. Si es [/ON] reseteamos fondo
+                elif tag == 'ON':
+                    ansi_sequence += BACK.RESET
+                # 3. Si no es estilo, asumimos que es un color y reseteamos segun el plano
+                else:
+                    ansi_sequence += BACK.RESET if is_background else FORE.RESET
+                continue
+
+            # --- LÓGICA DE APERTURA ---
+            if token.startswith('#'):
+                try: ansi_sequence += get_truecolor_sequence(HEX(token), is_background)
+                except ValueError: pass
+                continue
+
+            if token_upper.startswith('RGB('):
+                try:
+                    inner = re.search(r'\((.*?)\)', token).group(1)
+                    r, g, b, *rest = parse_params(inner)
+                    ansi_sequence += get_truecolor_sequence(RGB(int(r), int(g), int(b)), is_background)
+                except Exception: pass
+                continue
+
+            if token_upper.startswith('HSL('):
+                try:
+                    inner = re.search(r'\((.*?)\)', token).group(1)
+                    h, s, l, *rest = parse_params(inner)
+                    ansi_sequence += get_truecolor_sequence(HSL(h, s, l), is_background)
+                except Exception: pass
+                continue
+
+            # Prioridad: Estilo > Color
+            if hasattr(STYLE, token_upper):
+                ansi_sequence += getattr(STYLE, token_upper)
+            elif is_background:
+                if hasattr(BACK, token_upper):
+                    ansi_sequence += getattr(BACK, token_upper)
+            else:
+                if hasattr(FORE, token_upper):
+                    ansi_sequence += getattr(FORE, token_upper)
+
+        return ansi_sequence
+
+    # Expresión regular principal:
+    # 1. (\\\[|\\\])  -> Busca escapes literal \[ o \]
+    # 2. |            -> O
+    # 3. \[(.*?)\]    -> Busca contenido entre corchetes
+    def get_string_format(self):
+        pattern = r'(\\\[|\\\])|\[(.*?)\]'
+        
+        if self.string == '':
+            sys.stdout.write(end)
+            return
+        formatted_text = re.sub(pattern, self.replace_callback, self.string)    
+        return formatted_text
+
+def print(text: str = '', end: str = '\n'):
+    if text == '':
+        sys.stdout.write(end)
+        return
+    formatted_text = pstr(text).string_format
+    sys.stdout.write(formatted_text + end)
+
 
