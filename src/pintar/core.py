@@ -3,9 +3,9 @@
 
 import re
 import sys
-from colors import RGB, Color, HEX, HSL
 from typing import Tuple, List, Any, Union
-from ansi import FORE, BACK, STYLE
+from .colors import RGB, Color, HEX, HSL
+from .ansi import FORE, BACK, STYLE
 
 class dye:
     """Dar color a una cadena de texto con códigos ANSI."""
@@ -13,10 +13,10 @@ class dye:
 
         if isinstance(string, dye):
             self.string = string.string_format
-
+        print("BBB", fore, type(fore))
         self.string = str(string)
-        self.fore = self._process_color_parameter(fore) # -> RGB 
-        self.bg = self._process_color_parameter(bg) # -> RGB 
+        self.fore = dye._process_color_parameter(fore) # -> RGB 
+        self.bg = dye._process_color_parameter(bg) # -> RGB 
         self.style = style 
 
         self.string_format = self.get_string_format()
@@ -412,11 +412,22 @@ class pstr:
         formatted_text = re.sub(pattern, self.replace_callback, self.string)    
         return formatted_text
 
-def print(text: str = '', end: str = '\n'):
-    if text == '':
-        sys.stdout.write(end)
-        return
-    formatted_text = pstr(text).string_format
-    sys.stdout.write(formatted_text + end)
+import sys
 
+def print(*args, sep: str = ' ', end: str = '\n'):
+    """
+    Versión mejorada de print que utiliza pstr para formatear.
+    Soporta múltiples argumentos, separadores y conversión automática a string.
+    """
+    # Convertir todos los argumentos a string y unirlos con el separador
+    full_text = sep.join(str(arg) for arg in args)
+    
+    # Aplicar el formato especial de pstr
+    formatted_output = pstr(full_text).string_format if args else ""
+    
+    # Escribir en el buffer de salida estándar
+    sys.stdout.write(formatted_output + end)
+    
+    # Forzar el vaciado del buffer (flush)
+    sys.stdout.flush()
 

@@ -2,7 +2,7 @@ from .core import dye, Brush, Stencil, pstr, print
 from .colors import RGB, HSL, HEX
 from .ansi import FORE, BACK, STYLE
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 __author__ = "michiTrader"
 __description__ = "librería Python para colorear texto en terminal con códigos ANSI"
 
