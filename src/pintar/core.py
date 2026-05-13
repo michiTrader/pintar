@@ -1,3 +1,4 @@
+# modulo core.py
 # TODO: Que el operador suma '+' funcione para poder concatenarse con otro str o otro dye
 # TODO: Que en vez de string acepte cualquier parametro que se pueda cambiar a str como un entero
 
