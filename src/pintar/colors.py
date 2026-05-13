@@ -1,3 +1,4 @@
+# modulo colors.py
 import colorsys
 from re import match
 from abc import ABCMeta, abstractmethod, abstractclassmethod
