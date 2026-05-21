@@ -370,7 +370,7 @@ class PintarFormatter(logging.Formatter):
             style="{",
             validate=False,
         )
-        self.converter = time.gmtime
+        # self.converter = time.datefmt
         self._level_fmts: dict[int, str] = self._build_level_fmts()
 
     def _build_level_fmts(self) -> dict[int, str]:
