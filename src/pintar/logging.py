@@ -1,7 +1,6 @@
 """
-tradear_logging.py  v1.0
+logging.py  v1.0
 ========================
-Logger con color para estrategias de trading.
 Usa `pintar` (colors.py + ansi.py) para toda la generación de color.
 
 COLORES SOPORTADOS en fore y bg
